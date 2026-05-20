@@ -1,23 +1,44 @@
-import Link from "next/link";
+"use client";
 
-type Card = { href: string; icon: string; title: string; desc: string; accent: string; bg: string };
+type Card = { icon: string; title: string; desc: string; accent: string; bg: string };
 
-export function DashCard({ href, icon, title, desc, accent, bg }: Card) {
+export function DashCard({ icon, title, desc, accent, bg }: Card) {
   return (
-    <Link
-      href={href}
-      className="flex flex-col gap-3 p-5 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-indigo-400 hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 text-inherit no-underline"
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "12px",
+        padding: "20px",
+        background: "white",
+        border: "1px solid #f3f4f6",
+        borderRadius: "12px",
+        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+      }}
     >
       <div
-        className="w-10 h-10 rounded-lg flex items-center justify-center text-xl"
-        style={{ background: bg, color: accent }}
+        style={{
+          width: "40px",
+          height: "40px",
+          borderRadius: "8px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "20px",
+          background: bg,
+          color: accent,
+        }}
       >
         {icon}
       </div>
       <div>
-        <p className="text-[15px] font-semibold text-gray-900 mb-0.5">{title}</p>
-        <p className="text-[13px] text-gray-500 leading-relaxed">{desc}</p>
+        <p style={{ fontSize: "15px", fontWeight: 600, color: "#111827", marginBottom: "4px", margin: 0 }}>
+          {title}
+        </p>
+        <p style={{ fontSize: "13px", color: "#6b7280", lineHeight: "1.6", margin: 0 }}>
+          {desc}
+        </p>
       </div>
-    </Link>
+    </div>
   );
 }

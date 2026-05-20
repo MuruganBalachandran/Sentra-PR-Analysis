@@ -8,6 +8,12 @@ type Props = {
 };
 
 export function UsersTable({ users, onEdit, onToggleRole, onDelete }: Props) {
+  const formatRole = (role: string) => {
+    if (role === "ADMIN") return "Admin";
+    if (role === "USER") return "User";
+    return role;
+  };
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-[13px] border-collapse">
@@ -36,7 +42,7 @@ export function UsersTable({ users, onEdit, onToggleRole, onDelete }: Props) {
                       : "bg-gray-100 text-gray-500"
                   }`}
                 >
-                  {u.Role}
+                  {formatRole(u.Role)}
                 </span>
               </td>
               <td className="px-4 py-3">

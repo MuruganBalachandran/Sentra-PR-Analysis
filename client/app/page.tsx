@@ -8,7 +8,6 @@ import { Footer } from "@/components/dashboard/Footer";
 
 const FEATURES = [
   { 
-    href: "/analyze", 
     icon: "🔍", 
     title: "Analyze a PR", 
     desc: "Paste a GitHub PR link or code diff to get an instant AI risk assessment.", 
@@ -16,7 +15,6 @@ const FEATURES = [
     bg: "#fef3c7" 
   },
   { 
-    href: "/pr-analyses", 
     icon: "📋", 
     title: "PR Analyses", 
     desc: "View all past pull request risk assessments for your repositories.", 
@@ -24,7 +22,6 @@ const FEATURES = [
     bg: "#eef2ff" 
   },
   { 
-    href: "/profile", 
     icon: "👤", 
     title: "My Profile", 
     desc: "Manage your account details and update your password.", 
@@ -60,10 +57,80 @@ export default async function Home() {
         <WelcomeBanner displayName={displayName} isAdmin={isAdmin} />
         
         {/* Features Section */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-7">
-          {FEATURES.map((feature) => (
-            <DashCard key={feature.href} {...feature} />
-          ))}
+        <div style={{ marginBottom: "32px" }}>
+          <div style={{
+            background: "white",
+            border: "1px solid #f3f4f6",
+            borderRadius: "12px",
+            boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+            overflow: "hidden"
+          }}>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "16px 20px",
+              borderBottom: "1px solid #f3f4f6"
+            }}>
+              <p style={{ 
+                fontSize: "15px", 
+                fontWeight: 600, 
+                color: "#111827",
+                margin: 0
+              }}>
+                Features
+              </p>
+            </div>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+              gap: "0"
+            }}>
+              {FEATURES.map((feature, index) => (
+                <div
+                  key={index}
+                  style={{
+                    padding: "24px",
+                    borderRight: index < FEATURES.length - 1 ? "1px solid #f3f4f6" : "none"
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      borderRadius: "8px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "20px",
+                      background: feature.bg,
+                      color: feature.accent,
+                      marginBottom: "12px"
+                    }}
+                  >
+                    {feature.icon}
+                  </div>
+                  <p style={{ 
+                    fontSize: "13px", 
+                    fontWeight: 600, 
+                    color: "#111827", 
+                    marginBottom: "6px",
+                    margin: "0 0 6px 0"
+                  }}>
+                    {feature.title}
+                  </p>
+                  <p style={{ 
+                    fontSize: "12px", 
+                    color: "#6b7280", 
+                    lineHeight: "1.6", 
+                    margin: 0 
+                  }}>
+                    {feature.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
         
         {/* How It Works */}

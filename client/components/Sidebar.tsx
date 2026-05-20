@@ -1,8 +1,10 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { logoutThunk } from "@/store/slices/authSlice";
+import { LogoutModal } from "@/components/common/LogoutModal";
 
 const NAV = [
   {
@@ -99,6 +101,8 @@ export default function Sidebar({
   const pathname = usePathname();
   const dispatch = useAppDispatch();
   const router = useRouter();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const isActive = (href: string, exact?: boolean) => {
     if (exact) return pathname === href;
@@ -106,8 +110,22 @@ export default function Sidebar({
   };
 
   const handleLogout = async () => {
-    await dispatch(logoutThunk());
-    router.push("/login");
+    setLoggingOut(true);
+    try {
+      await dispatch(logoutThunk());
+      router.push("/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    } finally {
+      setLoggingOut(false);
+      setShowLogoutModal(false);
+    }
+  };
+
+  const formatRole = (role: string) => {
+    if (role === "ADMIN") return "Admin";
+    if (role === "USER") return "User";
+    return role;
   };
 
   const initials = name
@@ -169,13 +187,13 @@ export default function Sidebar({
             {!isCollapsed && (
               <div className="sidebar-user-info">
                 <div className="sidebar-user-name">{name || email}</div>
-                <div className="sidebar-user-role">{role}</div>
+                <div className="sidebar-user-role">{formatRole(role)}</div>
               </div>
             )}
           </div>
           <button 
             className="logout-btn" 
-            onClick={handleLogout}
+            onClick={() => setShowLogoutModal(true)}
             title={isCollapsed ? "Sign out" : ""}
           >
             <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
@@ -185,6 +203,14 @@ export default function Sidebar({
           </button>
         </div>
       </aside>
+      
+      {/* Logout Confirmation Modal */}
+      <LogoutModal 
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={handleLogout}
+        loading={loggingOut}
+      />
       
       {/* Overlay for mobile */}
       {!isCollapsed && (
