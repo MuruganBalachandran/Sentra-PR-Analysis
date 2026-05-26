@@ -210,27 +210,88 @@ export default function AnalyzePRClient() {
               <button onClick={() => setResult(null)} className="px-3.5 py-2 text-sm font-medium rounded-lg text-gray-500 hover:bg-gray-100 transition">Analyze another</button>
             </div>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {[
-              { icon: "🔬", title: "Risk Analysis", content: result.riskAnalysis },
-              { icon: "💬", title: "Generated PR Comment", content: result.prComment },
-            ].map(({ icon, title, content }) => (
-              <div key={title} className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden"
-                style={{ borderLeft: sevKey === "high" ? "3px solid #ef4444" : sevKey === "medium" ? "3px solid #4f46e5" : sevKey === "low" ? "3px solid #059669" : "3px solid #e5e7eb" }}>
-                <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 flex-wrap gap-2">
-                  <div className="flex items-center gap-2"><span>{icon}</span><p className="text-[15px] font-semibold text-gray-900">{title}</p></div>
-                  <div className="flex items-center gap-2">
-                    <CopyButton text={content} />
-                    <DownloadButton text={content} filename={`${title.toLowerCase().replace(/\s+/g, "_")}.md`} />
-                  </div>
+
+          {/* Two Section Layout: Mistakes and Suggestions */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+            {/* Section 1: Mistakes */}
+            <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden"
+              style={{ borderLeft: sevKey === "high" ? "3px solid #ef4444" : sevKey === "medium" ? "3px solid #4f46e5" : sevKey === "low" ? "3px solid #059669" : "3px solid #e5e7eb" }}>
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 flex-wrap gap-2">
+                <div>
+                  <div className="flex items-center gap-2"><span>🔍</span><p className="text-[15px] font-semibold text-gray-900">Mistakes</p></div>
+                  <p className="text-[12px] text-gray-500 mt-1">Issues found in your code</p>
                 </div>
-                <div className="px-5 pb-5 pt-4">
-                  <div className="bg-gray-50 border border-gray-100 rounded-lg p-5 max-h-[500px] overflow-y-auto">
-                    <MarkdownRenderer content={content} />
-                  </div>
+                <div className="flex items-center gap-2">
+                  <CopyButton text={result.riskAnalysis} />
+                  <DownloadButton text={result.riskAnalysis} filename="mistakes.md" />
                 </div>
               </div>
-            ))}
+              <div className="px-5 pb-5 pt-4">
+                <div className="bg-gray-50 border border-gray-100 rounded-lg p-5 max-h-[600px] overflow-y-auto">
+                  <MarkdownRenderer content={result.riskAnalysis} />
+                </div>
+              </div>
+            </div>
+
+            {/* Section 2: Suggestions */}
+            <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden"
+              style={{ borderLeft: sevKey === "high" ? "3px solid #ef4444" : sevKey === "medium" ? "3px solid #4f46e5" : sevKey === "low" ? "3px solid #059669" : "3px solid #e5e7eb" }}>
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 flex-wrap gap-2">
+                <div>
+                  <div className="flex items-center gap-2"><span>💡</span><p className="text-[15px] font-semibold text-gray-900">Suggestions</p></div>
+                  <p className="text-[12px] text-gray-500 mt-1">How to fix each issue</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CopyButton text={result.prComment} />
+                  <DownloadButton text={result.prComment} filename="suggestions.md" />
+                </div>
+              </div>
+              <div className="px-5 pb-5 pt-4">
+                <div className="bg-gray-50 border border-gray-100 rounded-lg p-5 max-h-[600px] overflow-y-auto">
+                  <MarkdownRenderer content={result.prComment} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Summary (Full Width Below) */}
+          <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden"
+            style={{ borderLeft: sevKey === "high" ? "3px solid #ef4444" : sevKey === "medium" ? "3px solid #4f46e5" : sevKey === "low" ? "3px solid #059669" : "3px solid #e5e7eb" }}>
+            <div className="px-5 py-3.5 border-b border-gray-100">
+              <div className="flex items-center gap-2"><span>📊</span><p className="text-[15px] font-semibold text-gray-900">Summary</p></div>
+              <p className="text-[12px] text-gray-500 mt-1">Overall assessment and next steps</p>
+            </div>
+            <div className="px-5 pb-5 pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-gray-50 border border-gray-100 rounded-lg p-4">
+                  <p className="text-[12px] text-gray-600 font-medium">Risk Level</p>
+                  <p className={`text-lg font-bold mt-2 ${sevKey === "high" ? "text-red-600" : sevKey === "medium" ? "text-blue-600" : sevKey === "low" ? "text-green-600" : "text-gray-600"}`}>
+                    {sevData?.label || "Unknown"}
+                  </p>
+                </div>
+                <div className="bg-gray-50 border border-gray-100 rounded-lg p-4">
+                  <p className="text-[12px] text-gray-600 font-medium">Status</p>
+                  <p className="text-sm font-semibold text-green-600 mt-2">✓ Complete</p>
+                </div>
+                <div className="bg-gray-50 border border-gray-100 rounded-lg p-4">
+                  <p className="text-[12px] text-gray-600 font-medium">Analysis Type</p>
+                  <p className="text-sm font-semibold text-gray-900 mt-2">{form.owner ? "Manual" : "URL-based"}</p>
+                </div>
+                <div className="bg-gray-50 border border-gray-100 rounded-lg p-4">
+                  <p className="text-[12px] text-gray-600 font-medium">Recommendation</p>
+                  <p className="text-sm font-semibold text-gray-900 mt-2">Review & Implement</p>
+                </div>
+              </div>
+              <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-[12px] font-semibold text-blue-900 mb-2">📋 Next Steps:</p>
+                <ol className="text-sm text-blue-800 space-y-1 ml-4 list-decimal">
+                  <li>Review the mistakes section above</li>
+                  <li>Implement suggestions from the suggestions section</li>
+                  <li>Run tests to verify changes</li>
+                  <li>Commit and push your changes</li>
+                </ol>
+              </div>
+            </div>
           </div>
         </>
       )}

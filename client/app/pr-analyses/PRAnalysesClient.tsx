@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { axiosClient } from "@/lib/axios";
 import { toast } from "react-toastify";
+import Modal from "@/components/common/Modal";
 
 type PRAnalysis = {
   _id: string;
@@ -59,18 +60,17 @@ export default function PRAnalysesClient({ isAdmin }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   // Get params from URL
   const fullNameFilter = searchParams.get("full_name") || "";
   const searchFilter = searchParams.get("search") || "";
-  const typeFilter = searchParams.get("type") || "";
   const dateRange = searchParams.get("date_range") || "latest";
   const limit = Number(searchParams.get("limit") || 5);
   const skip = Number(searchParams.get("skip") || 0);
 
   // Form inputs
   const [searchInput, setSearchInput] = useState(searchFilter);
-  const [typeInput, setTypeInput] = useState(typeFilter || "all");
   const [dateRangeInput, setDateRangeInput] = useState(dateRange);
 
   const totalPages = Math.ceil(total / limit);
@@ -95,7 +95,6 @@ export default function PRAnalysesClient({ isAdmin }: Props) {
         const query = new URLSearchParams();
         if (fullNameFilter) query.set("full_name", fullNameFilter);
         if (searchFilter) query.set("search", searchFilter);
-        if (typeFilter) query.set("type", typeFilter);
         if (dateRange) query.set("date_range", dateRange);
         query.set("limit", String(limit));
         query.set("skip", String(skip));
@@ -121,27 +120,24 @@ export default function PRAnalysesClient({ isAdmin }: Props) {
     };
 
     fetchData();
-  }, [fullNameFilter, searchFilter, typeFilter, dateRange, limit, skip]);
+  }, [fullNameFilter, searchFilter, dateRange, limit, skip]);
 
   // Sync form inputs with URL params
   useEffect(() => {
     setSearchInput(searchFilter);
-    setTypeInput(typeFilter || "all");
     setDateRangeInput(dateRange || "latest");
-  }, [searchFilter, typeFilter, dateRange]);
+  }, [searchFilter, dateRange]);
 
-  const navigate = (params: { full_name?: string; search?: string; type?: string; date_range?: string; limit?: number; skip?: number }) => {
+  const navigate = (params: { full_name?: string; search?: string; date_range?: string; limit?: number; skip?: number }) => {
     const sp = new URLSearchParams();
     const fn = params.full_name !== undefined ? params.full_name : fullNameFilter;
     const sr = params.search !== undefined ? params.search : searchFilter;
-    const tp = params.type !== undefined ? params.type : typeFilter;
     const dr = params.date_range !== undefined ? params.date_range : dateRange;
     const lm = params.limit !== undefined ? params.limit : limit;
     const sk = params.skip !== undefined ? params.skip : skip;
     
     if (fn) sp.set("full_name", fn);
     if (sr) sp.set("search", sr);
-    if (tp && tp !== "all") sp.set("type", tp);
     if (dr && dr !== "latest") sp.set("date_range", dr);
     sp.set("limit", String(lm));
     sp.set("skip", String(sk));
@@ -153,7 +149,6 @@ export default function PRAnalysesClient({ isAdmin }: Props) {
     e.preventDefault();
     navigate({ 
       search: searchInput.trim(), 
-      type: typeInput === "all" ? "" : typeInput,
       date_range: dateRangeInput,
       skip: 0 
     });
@@ -161,9 +156,8 @@ export default function PRAnalysesClient({ isAdmin }: Props) {
 
   const handleClear = () => {
     setSearchInput("");
-    setTypeInput("all");
     setDateRangeInput("latest");
-    navigate({ full_name: "", search: "", type: "", date_range: "latest", skip: 0 });
+    navigate({ full_name: "", search: "", date_range: "latest", skip: 0 });
   };
 
   const handleSelectAll = (checked: boolean) => {
@@ -185,8 +179,12 @@ export default function PRAnalysesClient({ isAdmin }: Props) {
   };
 
   const handleDeleteSelected = async () => {
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
     const count = selectedIds.size;
-    if (!confirm(`Are you sure you want to delete ${count} PR analysis${count > 1 ? 'es' : ''}?`)) return;
+    setDeleteModalOpen(false);
     
     setDeleting(true);
     try {
@@ -213,7 +211,6 @@ export default function PRAnalysesClient({ isAdmin }: Props) {
       const query = new URLSearchParams();
       if (fullNameFilter) query.set("full_name", fullNameFilter);
       if (searchFilter) query.set("search", searchFilter);
-      if (typeFilter) query.set("type", typeFilter);
       query.set("limit", String(limit));
       query.set("skip", String(newSkip));
 
@@ -241,8 +238,8 @@ export default function PRAnalysesClient({ isAdmin }: Props) {
     }
   };
 
-  const hasFilter = !!(searchInput.trim() || (typeInput && typeInput !== "all") || (dateRangeInput && dateRangeInput !== "latest"));
-  const hasActiveFilter = !!(searchFilter || typeFilter || (dateRange && dateRange !== "latest"));
+  const hasFilter = !!(searchInput.trim() || (dateRangeInput && dateRangeInput !== "latest"));
+  const hasActiveFilter = !!(searchFilter || (dateRange && dateRange !== "latest"));
   const allSelected = items.length > 0 && selectedIds.size === items.length;
   const someSelected = selectedIds.size > 0 && selectedIds.size < items.length;
 
@@ -297,18 +294,6 @@ export default function PRAnalysesClient({ isAdmin }: Props) {
             <option value="1w">Last Week</option>
             <option value="1m">Last Month</option>
             <option value="1y">Last Year</option>
-          </select>
-        </div>
-        <div style={{ position: "relative", flex: "0 1 140px", minWidth: 120 }}>
-          <select
-            className="form-input"
-            value={typeInput}
-            onChange={(e) => setTypeInput(e.target.value)}
-            style={{ cursor: "pointer" }}
-          >
-            <option value="all">All Types</option>
-            <option value="manual">Manual</option>
-            <option value="webhook">PR URL</option>
           </select>
         </div>
         <button className="btn btn-primary" type="submit">
@@ -379,7 +364,6 @@ export default function PRAnalysesClient({ isAdmin }: Props) {
       {hasActiveFilter && (
         <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
           {searchFilter && <span className="badge badge-neutral">search: "{searchFilter}"</span>}
-          {typeFilter && <span className="badge badge-neutral">type: {typeFilter}</span>}
           {dateRange && dateRange !== "latest" && <span className="badge badge-neutral">date: {dateRange === "oldest" ? "oldest first" : dateRange === "1d" ? "last 24h" : dateRange === "1w" ? "last week" : dateRange === "1m" ? "last month" : "last year"}</span>}
         </div>
       )}
@@ -591,6 +575,17 @@ export default function PRAnalysesClient({ isAdmin }: Props) {
           )}
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        open={deleteModalOpen}
+        title="Delete PR Analyses"
+        message={`Are you sure you want to delete ${selectedIds.size} PR analysis${selectedIds.size > 1 ? 'es' : ''}? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteModalOpen(false)}
+      />
     </main>
   );
 }

@@ -24,8 +24,15 @@ const app = express();
 
 // region  middleware
 
-// parse JSON body
-app.use(express.json());
+// CRITICAL: Parse JSON body but EXCLUDE webhook endpoints
+// Webhook endpoints need raw body for signature verification
+app.use((req, res, next) => {
+  // Skip JSON parsing for webhook endpoints
+  if (req.path === "/api/webhooks/github") {
+    return next();
+  }
+  express.json()(req, res, next);
+});
 
 // validate JSON format
 app.use(jsonValidator);

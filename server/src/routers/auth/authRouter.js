@@ -23,6 +23,14 @@ import {
   resendEmailVerificationOtp,
   resendPhone2FAOtp,
 } from "../../controllers/auth/signupController.js";
+import {
+  getGitHubAuthUrl,
+  handleGitHubCallback,
+  handleGitHubCallbackGet,
+  getGitHubStatus,
+  disconnectGitHub,
+  connectGitHubWithPat,
+} from "../../controllers/auth/githubAuthController.js";
 import { auth, rateLimiter } from "../../middleware/index.js";
 // endregion
 
@@ -53,6 +61,15 @@ router.post("/signup/verify-authenticator-2fa", verifyAuthenticator2FASignup);
 router.post("/signup/generate-backup-codes", generateBackupCodesSignup);
 router.post("/signup/complete", completeSignup);
 router.post("/signup/progress", getSignupProgress);
+
+// GitHub OAuth routes
+router.get("/github/authorize", auth(), getGitHubAuthUrl);
+router.get("/github/callback", handleGitHubCallbackGet);
+router.post("/github/callback", auth(), handleGitHubCallback);
+router.post("/github/pat", auth(), connectGitHubWithPat);
+router.get("/github/status", auth(), getGitHubStatus);
+router.delete("/github", auth(), disconnectGitHub);
+
 // endregion
 
 // region exports

@@ -118,9 +118,9 @@ export function Footer() {
             }}>
               {[
                 { href: "/about", label: "About Us" },
-                { href: "#", label: "Documentation" },
-                { href: "#", label: "API Reference" },
-                { href: "#", label: "Support" },
+                { href: "/documentation", label: "Documentation" },
+                { href: "/api-reference", label: "API Reference" },
+                { href: "/support", label: "Support" },
               ].map((link) => (
                 <li key={link.href} style={{ marginBottom: 12 }}>
                   <Link href={link.href} style={{
@@ -152,10 +152,10 @@ export function Footer() {
               margin: 0
             }}>
               {[
-                { href: "#", label: "Privacy Policy" },
-                { href: "#", label: "Terms of Service" },
-                { href: "#", label: "Cookie Policy" },
-                { href: "#", label: "Security" },
+                { href: "/privacy-policy", label: "Privacy Policy" },
+                { href: "/terms-of-service", label: "Terms of Service" },
+                { href: "/cookie-policy", label: "Cookie Policy" },
+                { href: "/security", label: "Security" },
               ].map((link) => (
                 <li key={link.href} style={{ marginBottom: 12 }}>
                   <Link href={link.href} style={{

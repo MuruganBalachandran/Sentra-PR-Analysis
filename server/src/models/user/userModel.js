@@ -72,6 +72,28 @@ const UserSchema = new mongoose.Schema(
       default: "NOT_STARTED",
     },
 
+    // GitHub integration
+    github_connected: {
+      type: Boolean,
+      default: false,
+    },
+    github_token: {
+      type: String,
+      default: null,
+    },
+    github_username: {
+      type: String,
+      default: null,
+    },
+    github_id: {
+      type: Number,
+      default: null,
+    },
+    github_connected_at: {
+      type: Date,
+      default: null,
+    },
+
     Is_Deleted: {
       type: Number,
       default: 0,
@@ -148,6 +170,7 @@ const transform = (doc, ret) => {
   if (ret) {
     delete ret.Password;
     delete ret.Is_Deleted;
+    delete ret.github_token; // Never expose token to client
   }
   return ret;
 };

@@ -9,4 +9,5 @@ export { default as ModuleOwnership } from './sentra/ModuleOwnershipModel.js';
 export { default as DependencyGraph } from './sentra/DependencyGraphModel.js';
 export { default as FragileModule } from './sentra/FragileModuleModel.js';
 export { default as PRAnalysis } from './sentra/PRAnalysisModel.js';
+export { MonitoredRepository } from './sentra/MonitoredRepositoryModel.js';
 // endregion

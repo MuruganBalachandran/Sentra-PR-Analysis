@@ -6,19 +6,16 @@ const listPRAnalyses = async (req = {}, res = {}) => {
     const q = req?.query || {};
     const full = (q?.full_name || "").trim();
     const search = (q?.search || "").trim();
-    const type = (q?.type || "").trim();
     const dateRange = (q?.date_range || "latest").trim();
     const limit = Math.min(100, Number(q?.limit || 20));
     const skip = Math.max(0, Number(q?.skip || 0));
 
     let filter = {};
     if (req.user?.role !== "ADMIN") {
-      filter.User_Id = req.user?.User_Id || "";
-    }
-
-    // Filter by type
-    if (type && (type === "manual" || type === "webhook")) {
-      filter.analysis_type = type;
+      // Only filter by User_Id if it exists
+      if (req.user?.User_Id) {
+        filter.User_Id = req.user.User_Id;
+      }
     }
 
     // Filter by date range
