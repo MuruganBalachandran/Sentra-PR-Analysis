@@ -264,7 +264,7 @@ const setupProfile = async (req = {}, res = {}, next) => {
 // endregion
 
 // ─────────────────────────────────────────────────────────────────────────────
-// region step 4: setup phone 2FA
+// region step 4: setup phone 2FA — send OTP via email
 const setupPhone2FASignup = async (req = {}, res = {}, next) => {
   try {
     const { email: rawEmail = "", phone_number = "" } = req?.body || {};
@@ -274,7 +274,6 @@ const setupPhone2FASignup = async (req = {}, res = {}, next) => {
       return sendResponse(res, 400, RESPONSE_STATUS.FAILURE, "Email and phone number are required");
     }
 
-    // Get signup progress
     const progress = await SignupProgress.findOne({ Email: email, Is_Deleted: 0 });
     if (!progress) {
       return sendResponse(res, 404, RESPONSE_STATUS.FAILURE, "Signup session not found");
@@ -284,10 +283,8 @@ const setupPhone2FASignup = async (req = {}, res = {}, next) => {
       return sendResponse(res, 400, RESPONSE_STATUS.FAILURE, "Profile must be set up first");
     }
 
-    // Generate OTP
     const otp = await create2FAOTP(email, "PHONE", "SETUP_2FA");
 
-    // Send OTP via email
     try {
       await send2FASetupEmail(email, otp);
     } catch (emailErr) {
@@ -295,13 +292,12 @@ const setupPhone2FASignup = async (req = {}, res = {}, next) => {
       return sendResponse(res, 400, RESPONSE_STATUS.FAILURE, "Failed to send verification code");
     }
 
-    // Store phone number temporarily
     progress.TwoFA_Setup_Data.phone_number = phone_number;
     await progress.save();
 
     return sendResponse(res, 200, RESPONSE_STATUS.SUCCESS, "Verification code sent to your email", {
       method: "phone",
-      phone_number: phone_number.replace(/\d(?=\d{4})/g, "*"), // Mask phone
+      phone_number: phone_number.replace(/\d(?=\d{4})/g, "*"),
     });
   } catch (err) {
     console.error("Setup phone 2FA signup error:", err);
@@ -311,7 +307,7 @@ const setupPhone2FASignup = async (req = {}, res = {}, next) => {
 // endregion
 
 // ─────────────────────────────────────────────────────────────────────────────
-// region step 5: verify phone 2FA
+// region step 5: verify phone 2FA — verify OTP sent to email
 const verifyPhone2FASignup = async (req = {}, res = {}, next) => {
   try {
     const { email: rawEmail = "", otp = "" } = req?.body || {};
@@ -321,19 +317,16 @@ const verifyPhone2FASignup = async (req = {}, res = {}, next) => {
       return sendResponse(res, 400, RESPONSE_STATUS.FAILURE, "Email and OTP are required");
     }
 
-    // Get signup progress
     const progress = await SignupProgress.findOne({ Email: email, Is_Deleted: 0 });
     if (!progress) {
       return sendResponse(res, 404, RESPONSE_STATUS.FAILURE, "Signup session not found");
     }
 
-    // Verify OTP using verify2FAOTP helper
     const verification = await verify2FAOTP(email, otp, "PHONE", "SETUP_2FA");
     if (!verification.valid) {
       return sendResponse(res, 400, RESPONSE_STATUS.FAILURE, verification.message);
     }
 
-    // Update progress
     progress.TwoFA_Setup_Data.phone_verified = true;
     await progress.save();
 
@@ -493,13 +486,13 @@ const completeSignup = async (req = {}, res = {}, next) => {
       return sendResponse(res, 400, RESPONSE_STATUS.FAILURE, "Email and profile must be verified first");
     }
 
-    // Check if phone 2FA is verified (mandatory)
+    // At least one 2FA method (phone OR authenticator) is required
     const hasPhone = progress.TwoFA_Setup_Data.phone_verified;
     const hasAuthenticator = progress.TwoFA_Setup_Data.authenticator_verified;
     const hasBackupCodes = progress.TwoFA_Setup_Data.backup_codes_generated;
 
-    if (!hasPhone) {
-      return sendResponse(res, 400, RESPONSE_STATUS.FAILURE, "Phone 2FA is required to complete signup");
+    if (!hasPhone && !hasAuthenticator) {
+      return sendResponse(res, 400, RESPONSE_STATUS.FAILURE, "At least one 2FA method (phone or authenticator) is required to complete signup");
     }
 
     // Create user account
@@ -642,21 +635,15 @@ const resendPhone2FAOtp = async (req = {}, res = {}, next) => {
       return sendResponse(res, 400, RESPONSE_STATUS.FAILURE, "Email is required");
     }
 
-    // Check if signup progress exists
     const progress = await SignupProgress.findOne({ Email: email, Is_Deleted: 0 });
     if (!progress) {
       return sendResponse(res, 404, RESPONSE_STATUS.FAILURE, "Signup session not found");
-    }
-
-    if (progress.Stage !== "TWO_FA_SETUP") {
-      return sendResponse(res, 400, RESPONSE_STATUS.FAILURE, "Invalid signup stage");
     }
 
     if (!progress.TwoFA_Setup_Data.phone_number) {
       return sendResponse(res, 400, RESPONSE_STATUS.FAILURE, "Phone number not set up");
     }
 
-    // Generate and send new OTP
     const otp = await create2FAOTP(email, "PHONE", "SETUP_2FA");
     try {
       await send2FASetupEmail(email, otp);
@@ -665,10 +652,7 @@ const resendPhone2FAOtp = async (req = {}, res = {}, next) => {
       return sendResponse(res, 400, RESPONSE_STATUS.FAILURE, "Failed to send verification code");
     }
 
-    return sendResponse(res, 200, RESPONSE_STATUS.SUCCESS, "New verification code sent to your email", {
-      method: "phone",
-      message: "Check your email for the new code",
-    });
+    return sendResponse(res, 200, RESPONSE_STATUS.SUCCESS, "New verification code sent to your email");
   } catch (err) {
     console.error("Resend phone 2FA OTP error:", err);
     next(err);

@@ -16,11 +16,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const isAuth = AUTH_ROUTES.includes(pathname);
   const noSidebar = NO_SIDEBAR_ROUTES.includes(pathname);
 
+  const [hasFetched, setHasFetched] = useState(false);
+
   useEffect(() => {
-    if (!isAuth && !noSidebar && !user) {
+    if (!isAuth && !noSidebar && !user && !hasFetched) {
+      setHasFetched(true);
       dispatch(fetchProfile());
     }
-  }, [isAuth, noSidebar, user, dispatch]);
+  }, [isAuth, noSidebar]);
 
   if (isAuth || noSidebar) {
     return <>{children}</>;

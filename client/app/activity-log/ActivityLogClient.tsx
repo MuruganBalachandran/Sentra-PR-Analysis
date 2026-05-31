@@ -78,7 +78,18 @@ export default function ActivityLogClient({
             <LogTable logs={logs} onDelete={handleDelete} />
             {/* Pagination */}
             <div className="flex items-center justify-between px-5 py-3.5 border-t border-gray-100 flex-wrap gap-3">
-              <span className="text-[13px] text-gray-400">Page {currentPage} of {totalPages}</span>
+              <div className="flex items-center gap-3">
+                <span className="text-[13px] text-gray-400">Page {currentPage} of {totalPages}</span>
+                <select
+                  value={limit}
+                  onChange={(e) => navigate({ limit: Number(e.target.value), skip: 0 })}
+                  className="px-2 py-1 border border-gray-200 rounded-lg text-[12px] text-gray-600 focus:outline-none focus:border-indigo-400 cursor-pointer"
+                >
+                  <option value="20">20 / page</option>
+                  <option value="50">50 / page</option>
+                  <option value="100">100 / page</option>
+                </select>
+              </div>
               <div className="flex gap-2">
                 <button
                   className="px-3 py-1.5 text-xs font-medium rounded-md border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"

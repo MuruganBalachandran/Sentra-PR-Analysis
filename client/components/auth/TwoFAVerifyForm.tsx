@@ -30,7 +30,7 @@ export default function TwoFAVerifyForm({ email, method, onSuccess, onBack, isLo
 
       if (isLogin) {
         // Login 2FA verification
-        await axiosClient.post("/auth/twofa/login/verify", {
+        await axiosClient.post("/2fa/login/verify", {
           email,
           method,
           code,
@@ -87,9 +87,12 @@ export default function TwoFAVerifyForm({ email, method, onSuccess, onBack, isLo
         <button
           type="button"
           onClick={onBack}
-          className="flex-1 py-2.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition"
+          className="p-2.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"
+          title="Go back"
         >
-          Back
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+          </svg>
         </button>
         <button
           type="submit"

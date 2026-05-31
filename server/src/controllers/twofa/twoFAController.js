@@ -19,6 +19,7 @@ import {
   send2FALoginEmail,
   sendBackupCodesEmail,
 } from "../../services/email/twoFAEmailService.js";
+import { sendPhoneOtp } from "../../services/sms/smsService.js";
 import { getProfileQuery } from "../../queries/index.js";
 // endregion
 
@@ -393,10 +394,12 @@ const verify2FALogin = async (req = {}, res = {}, next) => {
     }
 
     let isValid = false;
+    let invalidMessage = "Invalid verification code";
 
     if (method === "phone" && userDoc.TwoFA_Methods.phone.enabled) {
       const verification = await verify2FAOTP(email, code, "PHONE", "LOGIN_2FA");
       isValid = verification.valid;
+      if (!isValid) invalidMessage = verification.message || invalidMessage;
     } else if (method === "authenticator" && userDoc.TwoFA_Methods.authenticator.enabled) {
       isValid = verifyTOTPToken(userDoc.TwoFA_Methods.authenticator.secret, code);
     } else if (method === "backup_code" && userDoc.TwoFA_Methods.backup_codes.enabled) {
@@ -410,7 +413,7 @@ const verify2FALogin = async (req = {}, res = {}, next) => {
     }
 
     if (!isValid) {
-      return sendResponse(res, 400, RESPONSE_STATUS.FAILURE, "Invalid verification code");
+      return sendResponse(res, 400, RESPONSE_STATUS.FAILURE, invalidMessage);
     }
 
     // Generate token and set cookie
@@ -455,10 +458,16 @@ const send2FALoginCode = async (req = {}, res = {}, next) => {
 
     if (method === "phone" && userDoc.TwoFA_Methods.phone.enabled) {
       const otp = await create2FAOTP(email, "PHONE", "LOGIN_2FA");
+      let deliveryMethod = "email";
       try {
-        await send2FALoginEmail(email, otp);
-      } catch (emailErr) {
-        console.error("[Send 2FA Login Code] Email delivery failed:", emailErr?.message);
+        const result = await sendPhoneOtp(
+          userDoc.TwoFA_Methods.phone.phone_number,
+          otp,
+          () => send2FALoginEmail(email, otp)
+        );
+        deliveryMethod = result.method;
+      } catch (deliveryErr) {
+        console.error("[Send 2FA Login Code] All delivery methods failed:", deliveryErr?.message);
         return sendResponse(res, 400, RESPONSE_STATUS.FAILURE, "Failed to send verification code");
       }
     } else {

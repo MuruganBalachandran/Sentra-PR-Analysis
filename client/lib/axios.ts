@@ -12,19 +12,17 @@ export const axiosClient = axios.create({
 });
 
 // Add response interceptor to handle 401 errors
+// Suppress session-expired toast on the login page itself (wrong password returns 401)
 axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token is invalid or expired
       if (typeof window !== "undefined") {
-        // Show toast notification
-        toast.error("Session expired. Please log in again.", { autoClose: 3000 });
-        
-        // Redirect to login after a short delay
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 500);
+        const isLoginPage = window.location.pathname === "/login";
+        if (!isLoginPage) {
+          toast.error("Session expired. Please log in again.", { autoClose: 3000 });
+          setTimeout(() => { window.location.href = "/login"; }, 500);
+        }
       }
     }
     return Promise.reject(error);

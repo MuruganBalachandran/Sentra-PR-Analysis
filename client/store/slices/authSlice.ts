@@ -39,7 +39,14 @@ export const loginThunk = createAsyncThunk(
   "auth/login",
   async ({ email, password }: { email: string; password: string }, { rejectWithValue }) => {
     try {
-      await axiosClient.post("/auth/login", { email, password });
+      const loginRes = await axiosClient.post("/auth/login", { email, password });
+      const loginData = loginRes.data?.response;
+
+      // 2FA required — return the payload so login page can handle it
+      if (loginData?.requires2FA) {
+        return rejectWithValue(loginData);
+      }
+
       const res = await axiosClient.get("/auth/profile");
       return res.data?.response || res.data;
     } catch (err: any) {
