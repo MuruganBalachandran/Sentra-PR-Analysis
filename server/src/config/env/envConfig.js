@@ -1,20 +1,17 @@
-
 // region imports
 import dotenv from 'dotenv';
 dotenv.config();
 // endregion
 
-// region extract APP config safely
+// region parse config — reads the APP JSON blob from .env
 let env = {};
 try {
-  // parse env vars from .env
   env = JSON.parse(process?.env?.APP ?? '{}');
-} catch (err) {
+} catch {
   throw new Error('Invalid APP environment variable JSON');
 }
-
+// endregion
 
 // region exports
 export { env };
 // endregion
-

@@ -34,9 +34,9 @@ type MonitoredRepo = {
   enabled: boolean;
   github_webhook_id: number | null;
   settings: {
-    auto_label: boolean;
-    auto_assign_reviewers: boolean;
-    create_issues: boolean;
+    post_comment: boolean;
+    send_email: boolean;
+    delete_comment_on_merge: boolean;
     severity_threshold: string;
   };
   pr_count: number;
@@ -250,19 +250,33 @@ export default function RepositoriesClient() {
     }
   };
 
-  const handleToggleSetting = async (
-    repoId: string,
-    setting: string,
-    currentValue: boolean
-  ) => {
+  // Local draft settings per repo — keyed by repoId
+  const [draftSettings, setDraftSettings] = useState<Record<string, any>>({});
+  const [savingSettingsId, setSavingSettingsId] = useState<string | null>(null);
+
+  const getDraft = (repo: MonitoredRepo) =>
+    draftSettings[repo._id] ?? repo.settings;
+
+  const setDraft = (repoId: string, key: string, value: any) =>
+    setDraftSettings((prev) => ({
+      ...prev,
+      [repoId]: { ...(prev[repoId] ?? {}), [key]: value },
+    }));
+
+  const handleSaveSettings = async (repo: MonitoredRepo) => {
+    const draft = draftSettings[repo._id];
+    if (!draft) return;
+    setSavingSettingsId(repo._id);
     try {
-      await updateMonitoredRepositorySettings(repoId, {
-        [setting]: !currentValue,
-      });
-      toast.success("Setting updated");
+      await updateMonitoredRepositorySettings(repo._id, draft);
+      toast.success("Settings saved");
+      // Clear draft and reload
+      setDraftSettings((prev) => { const n = { ...prev }; delete n[repo._id]; return n; });
       await loadMonitoredRepos();
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err, "Failed to update setting"));
+      toast.error(getErrorMessage(err, "Failed to save settings"));
+    } finally {
+      setSavingSettingsId(null);
     }
   };
 
@@ -565,14 +579,7 @@ export default function RepositoriesClient() {
                 >
                   {/* Header */}
                   <div className="flex justify-between items-start mb-3">
-                    <div
-                      className="flex-1 cursor-pointer"
-                      onClick={() =>
-                        setExpandedMonitoredId(
-                          expandedMonitoredId === repo?._id ? null : repo?._id
-                        )
-                      }
-                    >
+                    <div className="flex-1">
                       <h3 className="font-semibold text-lg">{repo?.full_name}</h3>
                       <p className="text-sm text-gray-600">
                         {repo?.pr_count} PR(s) analyzed •{" "}
@@ -581,20 +588,24 @@ export default function RepositoriesClient() {
                     </div>
                     <div className="flex gap-2">
                       <button
-                        className={`btn btn-sm ${
-                          repo?.enabled ? "btn-success" : "btn-warning"
-                        }`}
-                        onClick={() =>
-                          handleToggleEnabled(repo?._id, repo?.enabled)
-                        }
+                        className={`btn btn-sm ${repo?.enabled ? "btn-success" : "btn-warning"}`}
+                        onClick={() => handleToggleEnabled(repo?._id, repo?.enabled)}
                       >
                         {repo?.enabled ? "🔴 Active" : "⚪ Paused"}
                       </button>
                       <button
-                        className="btn btn-sm btn-error"
+                        className={`btn btn-sm ${expandedMonitoredId === repo?._id ? "btn-neutral" : "btn-outline"}`}
                         onClick={() =>
-                          handleRemoveRepository(repo?._id, repo?.full_name)
+                          setExpandedMonitoredId(
+                            expandedMonitoredId === repo?._id ? null : repo?._id
+                          )
                         }
+                      >
+                        ⚙️ Settings
+                      </button>
+                      <button
+                        className="btn btn-sm btn-error"
+                        onClick={() => handleRemoveRepository(repo?._id, repo?.full_name)}
                         disabled={removingRepoId === repo?._id}
                       >
                         {removingRepoId === repo?._id ? (
@@ -621,84 +632,89 @@ export default function RepositoriesClient() {
 
                   {/* Expandable Settings */}
                   {expandedMonitoredId === repo?._id && (
-                    <div className="bg-white p-4 rounded border border-gray-200 space-y-3">
-                      <h4 className="font-semibold text-sm">Settings</h4>
+                    <div className="bg-white p-4 rounded border border-gray-200 space-y-4 mt-2">
+                      <h4 className="font-semibold text-sm text-gray-700">⚙️ Notification Settings</h4>
 
-                      {/* Auto-label */}
-                      <label className="flex items-center gap-3">
+                      {/* Post PR comment */}
+                      <label className="flex items-start gap-3 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={repo?.settings?.auto_label}
-                          onChange={() =>
-                            handleToggleSetting(
-                              repo?._id,
-                              "auto_label",
-                              repo?.settings?.auto_label
-                            )
-                          }
-                          className="checkbox checkbox-sm"
+                          checked={getDraft(repo)?.post_comment !== false}
+                          onChange={() => setDraft(repo._id, "post_comment", !(getDraft(repo)?.post_comment !== false))}
+                          className="checkbox checkbox-sm mt-0.5"
                         />
-                        <span className="text-sm">Auto-add risk labels</span>
+                        <div>
+                          <p className="text-sm font-medium">💬 Post comment on PR</p>
+                          <p className="text-xs text-gray-500">AI analysis will be posted as a comment on the pull request from your GitHub account</p>
+                        </div>
                       </label>
 
-                      {/* Auto-assign reviewers */}
-                      <label className="flex items-center gap-3">
+                      {/* Send email */}
+                      <label className="flex items-start gap-3 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={repo?.settings?.auto_assign_reviewers}
-                          onChange={() =>
-                            handleToggleSetting(
-                              repo?._id,
-                              "auto_assign_reviewers",
-                              repo?.settings?.auto_assign_reviewers
-                            )
-                          }
-                          className="checkbox checkbox-sm"
+                          checked={getDraft(repo)?.send_email !== false}
+                          onChange={() => setDraft(repo._id, "send_email", !(getDraft(repo)?.send_email !== false))}
+                          className="checkbox checkbox-sm mt-0.5"
                         />
-                        <span className="text-sm">Auto-request reviewers</span>
+                        <div>
+                          <p className="text-sm font-medium">📧 Send email notification</p>
+                          <p className="text-xs text-gray-500">Receive an email with the risk summary and severity when a PR is analyzed</p>
+                        </div>
                       </label>
 
-                      {/* Create issues */}
-                      <label className="flex items-center gap-3">
+                      {/* Delete comment on merge */}
+                      <label className="flex items-start gap-3 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={repo?.settings?.create_issues}
-                          onChange={() =>
-                            handleToggleSetting(
-                              repo?._id,
-                              "create_issues",
-                              repo?.settings?.create_issues
-                            )
-                          }
-                          className="checkbox checkbox-sm"
+                          checked={getDraft(repo)?.delete_comment_on_merge !== false}
+                          onChange={() => setDraft(repo._id, "delete_comment_on_merge", !(getDraft(repo)?.delete_comment_on_merge !== false))}
+                          className="checkbox checkbox-sm mt-0.5"
                         />
-                        <span className="text-sm">
-                          Create issues for high-risk findings
-                        </span>
+                        <div>
+                          <p className="text-sm font-medium">⏭️ Delete comment when PR is merged</p>
+                          <p className="text-xs text-gray-500">Automatically removes the Sentra analysis comment from GitHub once the PR is merged</p>
+                        </div>
                       </label>
 
                       {/* Severity threshold */}
                       <div>
-                        <label className="text-sm font-medium block mb-1">
-                          Severity Threshold
-                        </label>
+                        <label className="text-sm font-medium block mb-1">🎚️ Minimum severity to notify</label>
+                        <p className="text-xs text-gray-500 mb-2">Only post comment and send email if severity meets or exceeds this level</p>
                         <select
-                          value={repo?.settings?.severity_threshold}
-                          onChange={(e) => {
-                            updateMonitoredRepositorySettings(repo?._id, {
-                              severity_threshold: e?.target?.value || "medium",
-                            }).then(() => {
-                              loadMonitoredRepos();
-                              toast.success("Severity threshold updated");
-                            });
-                          }}
-                          className="select select-bordered select-sm w-full"
+                          value={getDraft(repo)?.severity_threshold || "low"}
+                          onChange={(e) => setDraft(repo._id, "severity_threshold", e.target.value)}
+                          className="select select-bordered select-sm w-full max-w-xs"
                         >
-                          <option value="low">Low</option>
-                          <option value="medium">Medium</option>
-                          <option value="high">High</option>
-                          <option value="critical">Critical</option>
+                          <option value="low">Low — notify on everything</option>
+                          <option value="medium">Medium — skip low risk</option>
+                          <option value="high">High — only high & critical</option>
+                          <option value="critical">Critical only</option>
                         </select>
+                      </div>
+
+                      {/* Save button */}
+                      <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
+                        <button
+                          className="btn btn-sm btn-primary"
+                          onClick={() => handleSaveSettings(repo)}
+                          disabled={savingSettingsId === repo._id || !draftSettings[repo._id]}
+                        >
+                          {savingSettingsId === repo._id ? (
+                            <><span className="loading loading-spinner loading-xs"></span> Saving…</>
+                          ) : "Save Settings"}
+                        </button>
+                        {draftSettings[repo._id] && (
+                          <button
+                            className="btn btn-sm btn-ghost text-gray-500"
+                            onClick={() => setDraftSettings((prev) => { const n = { ...prev }; delete n[repo._id]; return n; })}
+                          >
+                            Discard
+                          </button>
+                        )}
+                        {draftSettings[repo._id] && (
+                          <span className="text-xs text-amber-600 font-medium">● Unsaved changes</span>
+                        )}
                       </div>
                     </div>
                   )}

@@ -1,64 +1,37 @@
 // region imports
-// package imports
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-//  config imports
 import { corsConfig } from "./config/index.js";
-
-//  middleware imports
-import {
-  jsonValidator,
-  logger,
-  errorHandler,
-  notFound,
-} from "./middleware/index.js";
-
-//  router imports
+import { jsonValidator, logger, errorHandler, notFound } from "./middleware/index.js";
 import routers from "./routers/index.js";
 // endregion
 
-//  server initialization
 const app = express();
-// endregion
 
-// region  middleware
+// region middleware
 
-// CRITICAL: Parse JSON body but EXCLUDE webhook endpoints
-// Webhook endpoints need raw body for signature verification
+// CRITICAL: Webhook route needs raw body for HMAC — must be captured BEFORE any JSON parsing
+// Use express.raw() globally for webhook path, express.json() for everything else
 app.use((req, res, next) => {
-  // Skip JSON parsing for webhook endpoints
-  if (req.path === "/api/webhooks/github") {
-    return next();
+  const isWebhook = req.path.startsWith("/api/webhooks/github");
+  if (isWebhook) {
+    // Capture exact bytes — do NOT parse JSON here
+    express.raw({ type: "*/*", limit: "10mb" })(req, res, next);
+  } else {
+    express.json({ limit: "10mb" })(req, res, next);
   }
-  express.json()(req, res, next);
 });
 
-// validate JSON format
 app.use(jsonValidator);
-
-// apply CORS rules globally
 app.use(cors(corsConfig));
-// endregion
-
-// apply cookie parser
 app.use(cookieParser());
-
-// log all requests (moved to top for better observability)
 app.use(logger);
+// endregion
 
-// region API routes
 app.use("/api", routers);
-// endregion
 
-//  404 handler
 app.use(notFound);
-// endregion
-
-//  error handler
 app.use(errorHandler);
-// endregion
 
-// region exports
 export default app;
-// endregion

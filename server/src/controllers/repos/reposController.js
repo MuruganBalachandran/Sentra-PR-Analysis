@@ -166,18 +166,22 @@ const addMonitoredRepository = async (req = {}, res = {}) => {
             );
         }
 
-        // Create webhook
+        // Create webhook — requires BACKEND_URL to be a publicly reachable URL
         let webhookId = null;
+        let webhookError = null;
 
-        try {
-            const webhookUrl = `${env?.BACKEND_URL || "http://localhost:3000"}/api/webhooks/github`;
-            webhookId = await createWebhook(owner, repo, webhookUrl, userGithubToken);
-        } catch (webhookErr) {
-            console.error(
-                "[reposController] Webhook creation failed:",
-                webhookErr?.message
-            );
-            // Continue without webhook; user can retry
+        const backendUrl = env?.BACKEND_URL || "";
+        if (!backendUrl || backendUrl.includes("localhost")) {
+            webhookError = "BACKEND_URL is not configured to a public URL. GitHub cannot reach localhost. Set BACKEND_URL to your ngrok/public domain in .env.";
+            console.error("[reposController] " + webhookError);
+        } else {
+            try {
+                const webhookUrl = `${backendUrl}/api/webhooks/github`;
+                webhookId = await createWebhook(owner, repo, webhookUrl, userGithubToken);
+            } catch (webhookErr) {
+                webhookError = webhookErr?.message || "Webhook creation failed";
+                console.error("[reposController] Webhook creation failed:", webhookError);
+            }
         }
 
         // Create monitored repository record
@@ -192,10 +196,10 @@ const addMonitoredRepository = async (req = {}, res = {}) => {
             repository_url,
             enabled: true,
             settings: {
-                auto_label: true,
-                auto_assign_reviewers: true,
-                create_issues: true,
-                severity_threshold: "medium",
+                post_comment: true,
+                send_email: true,
+                delete_comment_on_merge: true,
+                severity_threshold: "low",
             },
         });
 
@@ -218,13 +222,16 @@ const addMonitoredRepository = async (req = {}, res = {}) => {
             res,
             STATUS_CODE?.CREATED || 201,
             RESPONSE_STATUS?.SUCCESS || "SUCCESS",
-            "Repository added to monitoring successfully",
+            webhookError
+                ? `Repository added, but webhook failed: ${webhookError}`
+                : "Repository added to monitoring successfully",
             {
                 repository: {
                     id: monitoredRepo?._id,
                     full_name: monitoredRepo?.full_name,
                     enabled: monitoredRepo?.enabled,
                     webhook_id: monitoredRepo?.github_webhook_id,
+                    webhook_error: webhookError || null,
                 },
             }
         );
@@ -397,7 +404,6 @@ const updateMonitoredRepositorySettings = async (req = {}, res = {}) => {
     try {
         const userId = req?.user?.User_Id || "";
         const { repoId = "" } = req?.params || {};
-        const { settings = {}, enabled = null } = req?.body || {};
 
         if (!userId) {
             return sendResponse(
@@ -438,23 +444,32 @@ const updateMonitoredRepositorySettings = async (req = {}, res = {}) => {
             );
         }
 
-        // Update settings and enabled status
+        // Accept settings fields either nested under "settings" key or flat at root
+        // Frontend sends: { post_comment: true } or { enabled: false }
+        const { enabled = null, ...rest } = req?.body || {};
+        const settingsFields = rest?.settings ? rest.settings : rest;
+
         const updateData = {};
 
-        if (Object.keys(settings || {})?.length > 0) {
-            updateData.settings = {
-                ...monitoredRepo?.settings,
-                ...settings,
-            };
+        // Use dot notation for nested settings fields so MongoDB patches only changed keys
+        const VALID_SETTINGS = ["post_comment", "send_email", "delete_comment_on_merge", "severity_threshold"];
+        for (const key of VALID_SETTINGS) {
+            if (settingsFields[key] !== undefined) {
+                updateData[`settings.${key}`] = settingsFields[key];
+            }
         }
 
         if (enabled !== null && typeof enabled === "boolean") {
             updateData.enabled = enabled;
         }
 
+        if (Object.keys(updateData).length === 0) {
+            return sendResponse(res, STATUS_CODE?.BAD_REQUEST || 400, RESPONSE_STATUS?.FAILURE || "FAILURE", "No valid fields to update");
+        }
+
         const updatedRepo = await MonitoredRepository.findByIdAndUpdate(
             repoId,
-            updateData,
+            { $set: updateData },
             { new: true }
         );
 

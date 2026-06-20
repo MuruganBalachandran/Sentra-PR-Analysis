@@ -1,7 +1,8 @@
 import { sendResponse, STATUS_CODE, RESPONSE_STATUS } from "../../utils/index.js";
 import { buildRiskAnalysisPrompt, buildPrCommentPrompt } from "../../services/sentra/promptBuilder.js";
 import { generateText } from "../../services/llm/llmService.js";
-import { PRAnalysis, Repository } from "../../models/index.js";
+import { PRAnalysis, Repository, User } from "../../models/index.js";
+import { postPRComment } from "../../services/github/githubService.js";
 
 const analyzePullRequest = async (req = {}, res = {}) => {
   try {
@@ -91,11 +92,26 @@ const analyzePullRequest = async (req = {}, res = {}) => {
             risk_analysis: riskAnalysis,
             pr_comment: prComment,
             severity,
+            analysis_type: "manual",
           },
         },
         { upsert: true, new: true, setDefaultsOnInsert: true }
       );
       console.log(`[Sentra] Saved PR analysis: ${fullName}#${prNumber}`);
+
+      // Post comment to GitHub PR using the user's connected GitHub token
+      if (owner && owner !== "manual" && repo && prNumber && req.user?.User_Id) {
+        try {
+          const userDoc = await User.findOne({ User_Id: req.user.User_Id }).select("github_token github_connected");
+          if (userDoc?.github_connected && userDoc?.github_token) {
+            await postPRComment(owner, repo, prNumber, prComment, userDoc.github_token);
+            console.log(`[Sentra] Comment posted to ${fullName}#${prNumber} as user`);
+          }
+        } catch (commentErr) {
+          console.warn("[Sentra] Failed to post GitHub comment:", commentErr?.message);
+          // Non-fatal — analysis already saved
+        }
+      }
     } catch (dbErr) {
       console.error("[Sentra] DB save error:", dbErr?.message);
       // Non-fatal — still return the analysis
@@ -106,7 +122,7 @@ const analyzePullRequest = async (req = {}, res = {}) => {
       STATUS_CODE?.OK || 200,
       RESPONSE_STATUS?.SUCCESS || "SUCCESS",
       "PR analysis complete",
-      { riskAnalysis, prComment, severity, riskAnalysisPrompt, prCommentPrompt }
+      { riskAnalysis, prComment, severity }
     );
   } catch (err) {
     console.error("PR analysis error:", err?.message);

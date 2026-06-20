@@ -5,7 +5,7 @@ const PRAnalysisSchema = new mongoose.Schema(
   {
     Analysis_Id: { type: mongoose.Schema.Types.ObjectId, auto: true },
     Repo_Id: { type: mongoose.Schema.Types.ObjectId, ref: "Repository", required: true },
-    User_Id: { type: String, default: "" }, // Track which user initiated this analysis
+    User_Id: { type: String, default: "" },
     owner: { type: String, required: true },
     repo: { type: String, required: true },
     pr_number: { type: Number, required: true },
@@ -13,7 +13,9 @@ const PRAnalysisSchema = new mongoose.Schema(
     risk_analysis: { type: String, default: "" },
     pr_comment: { type: String, default: "" },
     severity: { type: String, default: "" },
-    analysis_type: { type: String, enum: ["manual", "webhook"], default: "manual" }, // Type of analysis
+    analysis_type: { type: String, enum: ["manual", "webhook"], default: "manual" },
+    // GitHub comment ID — stored so we can delete the comment when PR is merged
+    github_comment_id: { type: Number, default: null },
     Created_At: { type: String, default: () => getFormattedDateTime() },
     Updated_At: { type: String, default: () => getFormattedDateTime() },
   },
@@ -32,4 +34,3 @@ PRAnalysisSchema.pre("findOneAndUpdate", function () {
 
 const PRAnalysis = mongoose.model("PRAnalysis", PRAnalysisSchema);
 export default PRAnalysis;
-

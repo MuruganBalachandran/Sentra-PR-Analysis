@@ -222,7 +222,7 @@ export default function LoginPage() {
       e.preventDefault();
       setBackupLoading(true);
       try {
-        await axiosClient.post("/auth/twofa/login/verify", {
+        await axiosClient.post("/2fa/login/verify", {
           email: twoFAEmail,
           method: "backup_code",
           code: backupCode,

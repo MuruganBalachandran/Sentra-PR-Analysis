@@ -85,6 +85,11 @@ const postPRComment = async (owner, repo, number, body, userToken = "") => {
   return await res.json();
 };
 
+const deletePRComment = async (owner, repo, commentId, userToken = "") => {
+  const url = `https://api.github.com/repos/${owner}/${repo}/issues/comments/${commentId}`;
+  await ghFetch(url, { method: "DELETE" }, userToken);
+};
+
 const fetchCommits = async (owner, repo, perPage = 50) => {
   const url = `https://api.github.com/repos/${owner}/${repo}/commits?per_page=${perPage}`;
   const res = await ghFetch(url);
@@ -105,4 +110,4 @@ const fetchPackageJson = async (owner, repo, branch = "main") => {
   return content ? JSON.parse(content) : null;
 };
 
-export { verifySignature, fetchPRDiff, postPRComment, fetchCommits, fetchCommitDetails, fetchPackageJson };
+export { verifySignature, fetchPRDiff, postPRComment, deletePRComment, fetchCommits, fetchCommitDetails, fetchPackageJson };

@@ -79,18 +79,14 @@ export async function updateMonitoredRepositorySettings(
   repoId: string,
   changes: {
     enabled?: boolean;
-    auto_label?: boolean;
-    auto_assign_reviewers?: boolean;
-    create_issues?: boolean;
+    post_comment?: boolean;
+    send_email?: boolean;
+    delete_comment_on_merge?: boolean;
     severity_threshold?: string;
   }
 ) {
   try {
-    const { enabled, ...settings } = changes;
-    const res = await axiosClient.put(`/repos/${repoId}`, {
-      ...(typeof enabled === "boolean" ? { enabled } : {}),
-      settings,
-    });
+    const res = await axiosClient.put(`/repos/${repoId}`, changes);
     return res?.data?.response || {};
   } catch (err: unknown) {
     console.error("[API] updateMonitoredRepositorySettings error:", getErrorMessage(err));
